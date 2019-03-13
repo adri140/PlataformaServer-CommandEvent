@@ -61,19 +61,19 @@ namespace PlataformaServerCommandEvent
             boundedContextWorker = ExecuteBoundedContextAsync(boundedContextServices, cancellationTokenSource.Token);
 
             // Simulates a client requesting for a change using a Command
-            //var commandSender = GetProcessManagerServices().GetRequiredService<ICommandSender>();
+            var commandSender = GetProcessManagerServices().GetRequiredService<ICommandSender>();
 
-           //var id = Guid.NewGuid().ToString();
-            //var name = Guid.NewGuid().ToString();
-            //var code = Guid.NewGuid().ToString();
+            var id = Guid.NewGuid().ToString();
+            var name = Guid.NewGuid().ToString();
+            var code = Guid.NewGuid().ToString();
 
-            //await commandSender.SendAsync(new CreateWebUser(id) { username = name, usercode = code });
+            await commandSender.SendAsync(new CreateWebUser(id) { username = name, usercode = code });
 
-            //name = Guid.NewGuid().ToString();
+            name = Guid.NewGuid().ToString();
 
-           // await commandSender.SendAsync(new UpdateWebUser(id) { username = name });
+            await commandSender.SendAsync(new UpdateWebUser(id) { username = name });
 
-           // await commandSender.SendAsync(new DeleteWebUser(id));
+            await commandSender.SendAsync(new DeleteWebUser(id));
 
             // Let the workers do their job and signal them to stop
             //await Task.Delay(30000);
