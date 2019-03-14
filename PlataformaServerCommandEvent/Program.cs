@@ -4,7 +4,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Pdc.Hosting;
 using Pdc.Messaging;
+using Pdc.Messaging.ServiceBus;
 using PlataformaServerCommandEvent.Denormalizadores;
 using PlataformaServerCommandEvent.Internals;
 using System;
@@ -22,8 +24,7 @@ namespace PlataformaServerCommandEvent
             Program pro = new Program();
             try
             {
-                // Start in their own thread a BoundedContext context that will receive the request Command and publish the change Events
-                pro.EndToEndCreateUser();
+                runMe(pro);
             }
             catch(Exception e)
             {
@@ -31,75 +32,55 @@ namespace PlataformaServerCommandEvent
             }
             Console.WriteLine("presiona para salir...");
             Console.ReadLine();
-            pro.cancellAsync();
+
+            try
+            {
+                stop(pro);
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
 
-        private readonly SqliteConnection connection;
+        public async static void runMe(Program pro)
+        {
+            await pro.RunServer();
+        }
+
+        public async static void stop(Program pro)
+        {
+            await pro.StopServer();
+            Thread.Sleep(1000);
+        }
+
         private readonly IConfiguration configuration;
-        private CancellationTokenSource cancellationTokenSource;
-        private Task denormalizationWorker;
-        private Task boundedContextWorker;
+        private readonly IServiceProvider services;
+        private IHostedService boundedContext;
+        private IServiceScope scope;
 
         public Program()
         {
             configuration = GetConfiguration();
-            connection = new SqliteConnection("DataSource=:memory:");
-            connection.Open();
+            services = GetBoundedContextServices();
         }
 
-        public async Task EndToEndCreateUser()
+        public async Task RunServer()
         {
-            // Prepare test data
-            cancellationTokenSource = new CancellationTokenSource();
-
-            // Start in their own thread a Denormalization context that will receive the BoundedContext's events
-            var denormalizationServices = GetDenormalizationServices();
-            denormalizationWorker = ExecuteDenormalizationAsync(denormalizationServices, cancellationTokenSource.Token);
-
-            // Start in their own thread a BoundedContext context that will receive the request Command and publish the change Events
-            var boundedContextServices = GetBoundedContextServices();
-            boundedContextWorker = ExecuteBoundedContextAsync(boundedContextServices, cancellationTokenSource.Token);
-
-            // Simulates a client requesting for a change using a Command
-            var commandSender = GetProcessManagerServices().GetRequiredService<ICommandSender>();
-
-            var id = Guid.NewGuid().ToString();
-            var name = Guid.NewGuid().ToString();
-            var code = Guid.NewGuid().ToString();
-
-            await commandSender.SendAsync(new CreateWebUser(id) { username = name, usercode = code });
-
-            name = Guid.NewGuid().ToString();
-
-            await commandSender.SendAsync(new UpdateWebUser(id) { username = name });
-
-            await commandSender.SendAsync(new DeleteWebUser(id));
-
-            // Let the workers do their job and signal them to stop
-            //await Task.Delay(30000);
-
-            //cancellationTokenSource.Cancel();
-            //await Task.WhenAll(denormalizationWorker, boundedContextWorker);
-
-            // Assert state
-            //casos de prueba, si son iguales ok si no algo esta mal
-            //var dbContext = denormalizationServices.GetRequiredService<PurchaseOrdersDbContext>();
-
-            //var userWeb = await dbContext.WebUsers.FindAsync(id);
-
-            //if (userWeb == null) throw new Exception("El objeto es nullo");
-
-            //if(!userWeb.usercode.Equals(code)) throw new Exception("El codigo no es igual");
-
-            //if (!userWeb.username.Equals(name)) throw new Exception("El nombre no es igual");
-
-            Console.WriteLine("Programa terminado");
+            scope = services.CreateScope();
+            using (scope)
+            {
+                boundedContext = services.GetRequiredService<IHostedService>();
+                await boundedContext.StartAsync(default);
+            }
         }
 
-        public async Task cancellAsync()
+        public async Task StopServer()
         {
-            cancellationTokenSource.Cancel();
-            await Task.WhenAll(denormalizationWorker, boundedContextWorker);
+            using (scope)
+            {
+                await boundedContext.StopAsync(default);
+            }
         }
 
         private static IConfiguration GetConfiguration()
@@ -133,109 +114,56 @@ namespace PlataformaServerCommandEvent
 #endif
         }
 
-        private IServiceProvider GetProcessManagerServices()
-        {
-            var services = new ServiceCollection();
-
-            services.AddLogging(builder => builder.AddDebug());
-
-            services.AddAzureServiceBusCommandSender(options => options.Bind(configuration.GetSection("ProcessManager:Sender")));
-
-            return services.BuildServiceProvider();
-        }
-
         private IServiceProvider GetBoundedContextServices()
         {
             var services = new ServiceCollection();
 
-            services.AddCommandHandler(options => options.Bind(configuration.GetSection("CommandHandler")));
-
             services.AddLogging(builder => builder.AddDebug());
+
+            //recive commands y los transforma a eventos
+            services.AddAzureServiceBusCommandReceiver(
+                builder =>
+                {
+                    builder.AddCommandHandler<CreateWebUser, CreateWebUserHandler>();
+                    builder.AddCommandHandler<UpdateWebUser, UpdateWebUserHandler>();
+                    builder.AddCommandHandler<DeleteWebUser, DeleteWebUserHandler>();
+                },
+                new Dictionary<string, Action<CommandBusOptions>>
+                {
+                    ["Core"] = options => configuration.GetSection("CommandHandler:Receiver").Bind(options),
+                });
+
+            //recivir eventos
+            /*services.AddAzureServiceBusEventSubscriber(
+                builder =>
+                {
+                    builder.AddDenormalizer<Pdc.Integration.Denormalization.Customer, CustomerDenormalizer>();
+                    builder.AddDenormalizer<Pdc.Integration.Denormalization.CustomerDetail, CustomerDetailDenormalizer>();
+                },
+                new Dictionary<string, Action<EventBusOptions>>
+                {
+                    ["Core"] = options => configuration.GetSection("Denormalization:Subscribers:0").Bind(options),
+                });*/
+
+            //enviar eventos
             services.AddAggregateRootFactory();
-            services.AddUnitOfWork(options => { });
-            services.AddDocumentDBPersistence(options => options.Bind(configuration.GetSection("DocumentDBPersistence")));
-            services.AddRedisDistributedLocks(options => options.Bind(configuration.GetSection("RedisDistributedLocks")));
+            services.AddUnitOfWork();
+            services.AddDocumentDBPersistence(options => configuration.GetSection("DocumentDBPersistence").Bind(options));
+            services.AddRedisDistributedLocks(options => configuration.GetSection("RedisDistributedLocks").Bind(options));
             services.AddDistributedRedisCache(options =>
             {
                 options.Configuration = configuration["DistributedRedisCache:Configuration"];
                 options.InstanceName = configuration["DistributedRedisCache:InstanceName"];
             });
-            services.AddAzureServiceBusEventPublisher(options => options.Bind(configuration.GetSection("BoundedContext:Publisher")));
 
-            services.AddCommandHandler<CreateWebUser, CreateWebUserHandler>();
-            services.AddCommandHandler<UpdateWebUser, UpdateWebUserHandler>();
-            services.AddCommandHandler<DeleteWebUser, DeleteWebUserHandler>();
+            //services.AddDbContext<PurchaseOrdersDbContext>(options => options.UseSqlite(connection));
 
-            return services.BuildServiceProvider();
-        }
+            //services.AddAzureServiceBusCommandSender(options => configuration.GetSection("ProcessManager:Sender").Bind(options));
+            services.AddAzureServiceBusEventPublisher(options => configuration.GetSection("BoundedContext:Publisher").Bind(options)); //publicador de eventos
 
-        private IServiceProvider GetDenormalizationServices()
-        {
-            var services = new ServiceCollection();
-
-            services.AddDenormalization(options => options.Bind(configuration.GetSection("Denormalization")));
-
-            services.AddLogging(builder => builder.AddDebug());
-            services.AddDbContext<PurchaseOrdersDbContext>(options => options.UseSqlite(connection));
-
-            services.AddDenormalizer<PlataformaServerCommandEvent.Denormalizadores.WebUser, WebUserDenormalizer>();
+            services.AddHostedService<HostedService>();
 
             return services.BuildServiceProvider();
-        }
-
-        private static async Task ExecuteBoundedContextAsync(IServiceProvider services, CancellationToken cancellationToken)
-        {
-            using (var scope = services.CreateScope())
-            {
-                var boundedContext = services.GetRequiredService<IHostedService>();
-
-                try
-                {
-                    await boundedContext.StartAsync(default);
-
-                    await Task.Delay(
-                        Timeout.InfiniteTimeSpan,
-                        cancellationToken);
-                }
-                catch (TaskCanceledException)
-                {
-
-                }
-                finally
-                {
-                    await boundedContext.StopAsync(default);
-                }
-            }
-        }
-
-        private static async Task ExecuteDenormalizationAsync(IServiceProvider services, CancellationToken cancellationToken)
-        {
-
-            using (var scope = services.CreateScope())
-            {
-                var dbContext = services.GetRequiredService<PurchaseOrdersDbContext>();
-                await dbContext.Database.EnsureCreatedAsync();
-            }
-
-            var denormalization = services.GetRequiredService<IHostedService>();
-
-            try
-            {
-                await denormalization.StartAsync(default);
-
-                await Task.Delay(
-                    Timeout.InfiniteTimeSpan,
-                    cancellationToken);
-
-            }
-            catch (TaskCanceledException)
-            {
-
-            }
-            finally
-            {
-                await denormalization.StopAsync(default);
-            }
         }
     }
 }
