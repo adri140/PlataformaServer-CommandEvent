@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace PlataformaServerCommandEvent.Internals
+namespace PlataformaPDCOnline.Editable.pdcOnline.Commands
 {
     public class CreateWebUser : Command
     {
@@ -12,8 +12,8 @@ namespace PlataformaServerCommandEvent.Internals
 
         }
 
-        public string username { get; set; }
-        public string usercode { set; get; }
+        public string Username { get; set; }
+        public string Usercode { set; get; }
     }
 
     public class UpdateWebUser : Command
@@ -23,7 +23,7 @@ namespace PlataformaServerCommandEvent.Internals
 
         }
 
-        public string username { set; get; }
+        public string Username { set; get; }
     }
 
     public class DeleteWebUser : Command

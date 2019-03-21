@@ -1,12 +1,11 @@
 ﻿using Pdc.Messaging;
 using Pdc.UnitOfWork;
+using PlataformaPDCOnline.Editable.pdcOnline.Commands;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PlataformaServerCommandEvent.Internals
+namespace PlataformaServerCommandEvent
 {
     public class CreateWebUserHandler : ICommandHandler<CreateWebUser>
     {
@@ -19,6 +18,7 @@ namespace PlataformaServerCommandEvent.Internals
 
         public async Task ExecuteAsync(CreateWebUser message, CancellationToken cancellationToken = default)
         {
+            Console.WriteLine("Create Web User Command Recibido");
             var user = await unitOfWork.CreateAsync<WebUser>(c => c.CreateWebUser(message));
             await unitOfWork.CommitAsync();
         }

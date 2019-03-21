@@ -1,9 +1,10 @@
 ﻿using Pdc.Messaging;
+using PlataformaServerCommandEvent;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace PlataformaServerCommandEvent.Internals
+namespace PlataformaPDCOnline.Editable.pdcOnline.Commands
 {
     public class WebUserCreated : Event
     {
@@ -11,13 +12,13 @@ namespace PlataformaServerCommandEvent.Internals
             : base(typeof(WebUser).Name, aggregateId, 0, previous)
         {
             Id = aggregateId;
-            this.username = username;
-            this.usercode = usercode;
+            this.Username = username;
+            this.Usercode = usercode;
         }
 
         public string Id { get; set; }
-        public string username { set; get; }
-        public string usercode { set; get; }
+        public string Username { set; get; }
+        public string Usercode { set; get; }
     }
 
     public class WebUserUpdated : Event
@@ -26,11 +27,11 @@ namespace PlataformaServerCommandEvent.Internals
             : base(typeof(WebUser).Name, aggregateId, 0, previous)
         {
             Id = aggregateId;
-            this.username = username;
+            this.Username = username;
         }
 
         public string Id { get; set; }
-        public string username { set; get; }
+        public string Username { set; get; }
     }
 
     public class WebUserDeleted : Event
