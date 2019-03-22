@@ -1,5 +1,6 @@
 ﻿using Pdc.Messaging;
 using Pdc.UnitOfWork;
+using PlataformaPDCOnline.Editable.ClassTab;
 using PlataformaPDCOnline.Editable.pdcOnline.Commands;
 using System;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PlataformaPDCOnline.Editable.pdcOnline.CommandsHandlers
+namespace PlataformaPDCOnline.Editable.CommandsHandlers
 {
     public class CreateWebAccessGroupHandler : ICommandHandler<CreateWebAccessGroup>
     {
