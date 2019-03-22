@@ -37,11 +37,11 @@ namespace PlataformaPDCOnline
                 try
                 {
                     await boundedContext.StartAsync(default);
-                    await Task.Delay(40000);
+                    await Task.Delay(50000);
                 }
                 finally
                 {
-                    boundedContext.StopAsync(default);
+                    await boundedContext.StopAsync(default);
                 }
             }
         }
@@ -89,6 +89,7 @@ namespace PlataformaPDCOnline
                     builder.AddCommandHandler<CreateWebUser, CreateWebUserHandler>();
                     builder.AddCommandHandler<UpdateWebUser, UpdateWebUserHandler>();
                     builder.AddCommandHandler<DeleteWebUser, DeleteWebUserHandler>();
+
                     builder.AddCommandHandler<CreateWebAccessGroup, CreateWebAccessGroupHandler>();
                 },
                 new Dictionary<string, Action<CommandBusOptions>>
