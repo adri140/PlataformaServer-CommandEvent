@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PlataformaPDCOnline
+namespace PlataformaPDCOnline.Editable.pdcOnline.CommandsHandlers
 {
     public class CreateWebAccessGroupHandler : ICommandHandler<CreateWebAccessGroup>
     {

@@ -1,6 +1,7 @@
 ﻿using Pdc.Messaging;
+using PlataformaPDCOnline.Editable.pdcOnline.Commands;
 
-namespace PlataformaPDCOnline.Editable.pdcOnline.Commands
+namespace PlataformaPDCOnline.Editable.pdcOnline.Events
 {
     public class WebUserCreated : Event
     {

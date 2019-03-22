@@ -1,16 +1,14 @@
-﻿
-
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pdc.Hosting;
 using Pdc.Messaging.ServiceBus;
 using PlataformaPDCOnline.Editable.pdcOnline.Commands;
+using PlataformaPDCOnline.Editable.pdcOnline.CommandsHandlers;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace PlataformaPDCOnline
@@ -26,6 +24,8 @@ namespace PlataformaPDCOnline
             var services = GetBoundedContextServices();
 
             Run(services);
+
+            Console.ReadLine();
             
         }
 

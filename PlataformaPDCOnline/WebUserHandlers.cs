@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PlataformaPDCOnline
+namespace PlataformaPDCOnline.Editable.pdcOnline.CommandsHandlers
 {
     public class CreateWebUserHandler : ICommandHandler<CreateWebUser>
     {
