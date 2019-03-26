@@ -9,6 +9,7 @@ using PlataformaPDCOnline.Editable.pdcOnline.Commands;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PlataformaPDCOnline
@@ -16,7 +17,6 @@ namespace PlataformaPDCOnline
     class Program
     {
         private static IConfiguration configuration;
-        private static IServiceProvider scope;
 
         static void Main(string[] args)
         {
@@ -25,11 +25,12 @@ namespace PlataformaPDCOnline
 
             Run(services);
 
+            Console.WriteLine("press...");
             Console.ReadLine();
             
         }
 
-        private static async Task Run(IServiceProvider services)
+        private static async void Run(IServiceProvider services)
         {
             using (var scope = services.CreateScope())
             {
@@ -37,10 +38,11 @@ namespace PlataformaPDCOnline
                 try
                 {
                     await boundedContext.StartAsync(default);
-                    await Task.Delay(50000);
+                    Thread.Sleep(60000);
                 }
                 finally
                 {
+                    Console.WriteLine("stoping");
                     await boundedContext.StopAsync(default);
                 }
             }
@@ -55,8 +57,6 @@ namespace PlataformaPDCOnline
                 {
                     { "DistributedRedisCache:InstanceName", "Cache." },
                     { "RedisDistributedLocks:InstanceName", "Locks." },
-                    { "DocumentDBPersistence:Database", "Tests" },
-                    { "DocumentDBPersistence:Collection", "Events" },
                     { "ProcessManager:Sender:EntityPath", "core-test-commands" },
                     { "BoundedContext:Publisher:EntityPath", "core-test-events" },
                     { "CommandHandler:Receiver:EntityPath", "core-test-commands" },
@@ -94,7 +94,7 @@ namespace PlataformaPDCOnline
                 },
                 new Dictionary<string, Action<CommandBusOptions>>
                 {
-                    ["Core"] = options => configuration.GetSection("CommandHandler:Receiver").Bind(options),
+                    ["Core"] = options => configuration.GetSection("CommandHandler:Receiver").Bind(options)
                 });
 
             services.AddAggregateRootFactory();
